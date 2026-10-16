@@ -78,3 +78,69 @@ body {
   font-size: 1.2rem;
   font-weight: bold;
 }
+/* Contenedor principal del teclado */
+.teclado {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 25px;
+  width: 100%;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Filas del teclado */
+.fila-teclado {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+
+/* Diseño de cada tecla */
+.tecla {
+  background-color: #d3d6da;
+  color: #1a1a1a;
+  font-weight: bold;
+  font-size: 1rem;
+  flex: 1;
+  height: 55px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  user-select: none;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.tecla:active {
+  transform: scale(0.95);
+}
+
+.tecla:hover {
+  background-color: #bcbec0;
+}
+
+/* Colores de las teclas según su estado (con bordes accesibles opcionales) */
+.tecla.correcta {
+  background-color: #6aaa64;
+  color: white;
+  border: 2px solid #3b6b37;
+}
+
+.tecla.presente {
+  background-color: #c9b458;
+  color: white;
+  border: 2px dashed #7a6c2f;
+}
+
+.tecla.ausente {
+  background-color: #787c7e;
+  color: white;
+  border: 2px dotted #3a3c3d;
+}

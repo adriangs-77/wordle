@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react'
 import Casilla from './components/Casilla.jsx'
+import Teclado from './components/Teclado.jsx'
 
 const FILAS = 6
 const COLUMNAS = 5
-const SOLUCION = 'SANTO'
+const PALABRAS = ['SANTO', 'PERRO', 'GATO', 'CASAS', 'LIBRO', 'MUNDO', 'FUEGO', 'AGUAS']
 
-// Crea un tablero vacío: 6 filas de 5 letras en blanco
+function palabraAlAzar() {
+  const indice = Math.floor(Math.random() * PALABRAS.length)
+  return PALABRAS[indice]
+}
+
 function tableroVacio() {
   const tablero = []
   for (let f = 0; f < FILAS; f++) {
@@ -14,79 +19,164 @@ function tableroVacio() {
   return tablero
 }
 
-// Decide el color de una letra ya comprobada
-function estadoDe(letra, columna) {
-  if (SOLUCION[columna] === letra) return 'correcta'
-  if (SOLUCION.includes(letra)) return 'presente'
-  return 'ausente'
-}
-
 function App() {
   const [intentos, setIntentos] = useState(tableroVacio())
   const [filaActual, setFilaActual] = useState(0)
+  const [solucion, setSolucion] = useState(palabraAlAzar)
+  const [aviso, setAviso] = useState('')
 
-  // El último intento comprobado, como texto: 'PERRO'
   const ultimo = filaActual > 0 ? intentos[filaActual - 1].join('') : ''
-  const ganada = ultimo === SOLUCION
+  const ganada = ultimo === solucion
   const terminada = ganada || filaActual === FILAS
 
+  function obtenerColoresFila(intentoFila) {
+    const colores = Array(COLUMNAS).fill('ausente')
+    const letrasSolucion = solucion.split('')
+    const intento = [...intentoFila]
+
+    for (let c = 0; c < COLUMNAS; c++) {
+      if (intento[c] === letrasSolucion[c]) {
+        colores[c] = 'correcta'
+        letrasSolucion[c] = null
+        intento[c] = null
+      }
+    }
+
+    for (let c = 0; c < COLUMNAS; c++) {
+      if (intento[c] !== null) {
+        const indiceSolucion = letrasSolucion.indexOf(intento[c])
+        if (indiceSolucion !== -1) {
+          colores[c] = 'presente'
+          letrasSolucion[indiceSolucion] = null
+        } else {
+          colores[c] = 'ausente'
+        }
+      }
+    }
+
+    return colores
+  }
+
+ 
+  function obtenerEstadosTeclas() {
+    const estados = {}
+    const prioridad = { correcta: 3, presente: 2, ausente: 1 }
+
+    for (let f = 0; f < filaActual; f++) {
+      const coloresFila = obtenerColoresFila(intentos[f])
+      intentos[f].forEach((letra, c) => {
+        const estadoActual = coloresFila[c]
+        if (!estados[letra] || prioridad[estadoActual] > prioridad[estados[letra]]) {
+          estados[letra] = estadoActual
+        }
+      })
+    }
+    return estados
+  }
+
   useEffect(() => {
-    // Lleva el cursor a la primera casilla en la que se puede escribir
     document.querySelector('.casilla:enabled')?.focus()
   }, [filaActual])
 
+ 
+  function insertarLetra(letraMayus) {
+   
+    const columnaVacia = intentos[filaActual].indexOf('')
+    if (columnaVacia === -1) return // Fila llena
+
+    setAviso('')
+    const copia = intentos.map((fila) => [...fila])
+    copia[filaActual][columnaVacia] = letraMayus
+    setIntentos(copia)
+  }
+
   function cambiarLetra(f, c, evento) {
     const letra = evento.target.value.toUpperCase()
-    // Solo aceptamos una letra, o nada si se ha borrado
     if (!/^[A-ZÑ]?$/.test(letra)) return
 
-    // Copiamos el tablero, cambiamos la copia y la guardamos
+    setAviso('')
     const copia = intentos.map((fila) => [...fila])
     copia[f][c] = letra
     setIntentos(copia)
 
-    // Después de escribir una letra, pasamos a la casilla siguiente
     if (letra !== '') evento.target.nextElementSibling?.focus()
   }
 
+  function manejarTeclaAbajo(f, c, evento) {
+    if (evento.key === 'Backspace' && intentos[f][c] === '') {
+      evento.target.previousElementSibling?.focus()
+    }
+  }
+
   function comprobar(evento) {
-    // Evita que el navegador recargue la página al enviar el formulario
     evento.preventDefault()
     if (terminada) return
-    // No se puede comprobar una fila incompleta
-    if (intentos[filaActual].includes('')) return
 
+    if (intentos[filaActual].includes('')) {
+      setAviso('Faltan letras')
+      return
+    }
+
+    setAviso('')
     setFilaActual(filaActual + 1)
+  }
+
+  function reiniciar() {
+    setIntentos(tableroVacio())
+    setFilaActual(0)
+    setSolucion(palabraAlAzar())
+    setAviso('')
   }
 
   return (
     <form className="juego" onSubmit={comprobar}>
       <h1>Wordle</h1>
       <div className="tablero">
-        {intentos.map((fila, f) => (
-          <div className="fila" key={f}>
-            {fila.map((letra, c) => (
-              <Casilla
-                key={c}
-                letra={letra}
-                estado={f < filaActual ? estadoDe(letra, c) : ''}
-                activa={f === filaActual && !terminada}
-                onCambio={(evento) => cambiarLetra(f, c, evento)}
-              />
-            ))}
-          </div>
-        ))}
+        {intentos.map((fila, f) => {
+          const coloresFila = f < filaActual ? obtenerColoresFila(fila) : []
+
+          return (
+            <div className="fila" key={f}>
+              {fila.map((letra, c) => (
+                <Casilla
+                  key={c}
+                  letra={letra}
+                  estado={f < filaActual ? coloresFila[c] : ''}
+                  activa={f === filaActual && !terminada}
+                  fila={f + 1}
+                  columna={c + 1}
+                  onCambio={(evento) => cambiarLetra(f, c, evento)}
+                  onKeyDown={(evento) => manejarTeclaAbajo(f, c, evento)}
+                />
+              ))}
+            </div>
+          )
+        })}
       </div>
+
+      {aviso && <p className="aviso">{aviso}</p>}
+
       {terminada ? (
-        <p className="mensaje" role="status">
-          {ganada
-            ? '¡Enhorabuena, has acertado!'
-            : `La palabra era ${SOLUCION}`}
-        </p>
+        <div className="fin-partida">
+          <p className="mensaje" role="status">
+            {ganada
+              ? '¡Enhorabuena, has acertado!'
+              : `La palabra era ${solucion}`}
+          </p>
+          <button className="boton" type="button" onClick={reiniciar}>
+            Nueva partida
+          </button>
+        </div>
       ) : (
-        <button className="boton" type="submit">
-          Comprobar
-        </button>
+        <>
+          <button className="boton" type="submit">
+            Comprobar
+          </button>
+          <Teclado
+            onPulsaLetra={insertarLetra}
+            estadosTeclas={obtenerEstadosTeclas()}
+          />
+        </>
       )}
     </form>
   )
